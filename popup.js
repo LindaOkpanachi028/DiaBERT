@@ -8,7 +8,7 @@ document.getElementById("classify").addEventListener("click", async () => {
 
     console.log("Entered Text:", text);
 
-    const serverUrl = "http://127.0.0.1:5000/predict";
+    const serverUrl = "https://diabert-jxbe.onrender.com/predict";
 
     try {
         const response = await fetch(serverUrl, {
@@ -33,7 +33,7 @@ document.getElementById("classify").addEventListener("click", async () => {
             return;
         }
 
-        // ✅ Ensure probabilities exist before accessing them
+        //Ensure probabilities exist before accessing them
         if (!result.probabilities || typeof result.probabilities.false === "undefined" || typeof result.probabilities.real === "undefined") {
             console.error("Invalid probabilities:", result.probabilities);
             document.getElementById("result").innerHTML = 

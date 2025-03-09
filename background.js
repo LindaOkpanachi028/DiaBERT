@@ -1,5 +1,5 @@
 async function classifyTextServer(text) {
-    const serverUrl = "http://127.0.0.1:5000/predict";
+    const serverUrl = "https://diabert-jxbe.onrender.com/predict";
 
     try {
         const response = await fetch(serverUrl, {
