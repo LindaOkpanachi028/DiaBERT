@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BERT Classifier</title>
+    
+    <!-- Use local chart.js -->
+    <script src="./chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            width: 400px; /* Adjust width for better display */
+            padding: 10px;
+        }
+        textarea {
+            width: 90%;
+            height: 80px;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        canvas {
+            max-width: 350px;
+            margin: 20px auto;
+            display: none;
+        }
+        #explanationSection {
+            display: none;
+            text-align: left;
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        mark {
+            background-color: yellow;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>BERT Classifier</h1>
+    
+    <textarea id="inputText" rows="4" cols="50" placeholder="Paste your text here"></textarea>
+    <br><br>
+    <button id="classify">Classify Text</button>
+    
+    <p id="result"></p>
+
+    <h2>How Confident the Model Is</h2>
+    <canvas id="confidenceChart"></canvas>
+
+    <!-- Explanation Section -->
+    <div id="explanationSection">
+        <h2>Explainability</h2>
+        <p id="highlightedText"></p>
+        <p id="explanationText"></p>
+    </div>
+
+    <!-- Load script for classification and visualization -->
+    <script src="popup.js"></script>
+
+</body>
+</html>
