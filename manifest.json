@@ -1,13 +1,31 @@
-{
+
+  {
     "manifest_version": 3,
-    "name": "BERT Browser Extension",
+    "name": "DiaBERT Misinformation Checker",
     "version": "1.0",
-    "description": "Classify text using BERT and visualize confidence scores.",
-    "permissions": ["activeTab"],
-    "host_permissions": ["http://127.0.0.1:5000/"],
+    "description": "Classify diabetes-related text using BERT and visualize confidence scores.",
+    "permissions": [
+        "activeTab",
+        "storage",
+        "scripting"
+    ],
+    "host_permissions": [
+        "https://diabert-jxbe.onrender.com/*"
+    ],
     "action": {
-      "default_popup": "popup.html"
-  
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    "background": {
+        "service_worker": "background.js"
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
     }
-  }
-  
+}

@@ -17,12 +17,13 @@ document.getElementById("classify").addEventListener("click", async () => {
             body: JSON.stringify({ text }),
         });
 
+        // Handle non-JSON responses or failed requests
+        if (!response.ok) {
+            throw new Error(`Server responded with status ${response.status}`);
+        }
+
         const result = await response.json();
         console.log("Server response:", result);
-
-        if (!result || typeof result !== "object") {
-            throw new Error("Invalid server response.");
-        }
 
         // Handle unrelated query response
         if (result.is_relevant === false) {
@@ -33,7 +34,7 @@ document.getElementById("classify").addEventListener("click", async () => {
             return;
         }
 
-        //Ensure probabilities exist before accessing them
+        // Ensure probabilities exist before accessing them
         if (!result.probabilities || typeof result.probabilities.false === "undefined" || typeof result.probabilities.real === "undefined") {
             console.error("Invalid probabilities:", result.probabilities);
             document.getElementById("result").innerHTML = 
@@ -42,7 +43,6 @@ document.getElementById("classify").addEventListener("click", async () => {
             return;
         }
 
-        //
         let predictionText = result.predicted_label.toLowerCase() === "false" 
             ? '<span style="color: red; font-weight: bold; font-size: 22px;">FALSE</span>'
             : '<span style="color: green; font-weight: bold; font-size: 22px;">TRUE</span>';
@@ -66,13 +66,16 @@ document.getElementById("classify").addEventListener("click", async () => {
     } catch (error) {
         console.error("Error:", error);
         document.getElementById("result").innerHTML =
-            `<strong style="color: red;">Server Error:</strong> Please try again later.`;
+            `<strong style="color: red;">Server Error:</strong> ${error.message || "Please try again later."}`;
     }
 });
 
+
+// Function to render confidence chart
 function renderChart(probabilities) {
     const ctx = document.getElementById("confidenceChart").getContext("2d");
 
+    // Destroy existing chart if it exists
     if (window.confidenceChart && typeof window.confidenceChart.destroy === "function") {
         window.confidenceChart.destroy();
     }
@@ -99,13 +102,13 @@ function renderChart(probabilities) {
     realConfidence = Math.max(realConfidence, minVisibleValue);
     falseConfidence = Math.max(falseConfidence, minVisibleValue);
 
-    //Create a new chart instance
+    // Create a new chart instance
     window.confidenceChart = new Chart(ctx, {
         type: "bar",
         data: {
             labels: ["Real", "False"],
             datasets: [{
-                label: "Confident Score(%)",
+                label: "Confidence Score (%)",
                 data: [realConfidence, falseConfidence],
                 backgroundColor: ["#4caf50", "#f44336"], // Green for True, Red for False
                 borderWidth: 1,
@@ -130,7 +133,7 @@ function renderChart(probabilities) {
 }
 
 
-//Function to Highlight Keywords and Display Explanation
+// Function to highlight keywords and display explanation
 function displayExplainability(text, keyWords, explanation) {
     const explanationSection = document.getElementById("explanationSection");
     const highlightedTextContainer = document.getElementById("highlightedText");
@@ -151,6 +154,5 @@ function displayExplainability(text, keyWords, explanation) {
     }
 
     explanationText.innerHTML = `<strong>Explanation:</strong> ${explanation}`;
-
     explanationSection.style.display = "block";
 }

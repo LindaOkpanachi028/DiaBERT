@@ -73,6 +73,17 @@ CORS(app, origins=["chrome-extension://pkbfgfhddafhlnndmcnhahnokddbgjjo"],
      supports_credentials=True,
      methods=["GET", "POST", "OPTIONS"])
 
+from flask import jsonify
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"error": "Not Found"}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"error": "Internal Server Error"}), 500
+
+
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({
@@ -150,7 +161,7 @@ def generate_gpt_explanation(prediction, key_words, confidence, user_text):
 
     prompt = f"""
     The model classified this text as '{mapped_prediction}' with {confidence:.2f}% confidence.
-    
+
     **Original sentence:** "{user_text}"
 
     The most important words influencing this decision were: {', '.join(key_words)}.
@@ -158,13 +169,20 @@ def generate_gpt_explanation(prediction, key_words, confidence, user_text):
     Provide a **concise, context-aware explanation** (50-80 words) about why the model made this prediction.
     """
 
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0,
-        max_tokens=100
-    )
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            max_tokens=100
+        )
+        explanation = response.choices[0].message.content.strip()
+        return explanation
+
+    except Exception as e:
+        print("OpenAI API Error:", e)
+        return "Failed to generate an explanation due to API error."
+
 
 @app.route("/predict", methods=["POST"])
 def predict():
