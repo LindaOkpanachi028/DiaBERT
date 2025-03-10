@@ -6,6 +6,7 @@ import os
 from transformers_interpret import SequenceClassificationExplainer
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from sentence_transformers import SentenceTransformer, util
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -66,14 +67,11 @@ def ensure_resources_loaded():
     if not resources_loaded:
         load_resources()
 
-# CORS headers for every response
-@app.after_request
-def after_request(response):
-    response.headers.add("Access-Control-Allow-Origin", "chrome-extension://pkbfgfhddafhlnndmcnhahnokddbgjjo")
-    response.headers.add("Access-Control-Allow-Headers", "Content-Type")
-    response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-    return response
 
+CORS(app, origins=["chrome-extension://pkbfgfhddafhlnndmcnhahnokddbgjjo"],
+     allow_headers=["Content-Type"],
+     supports_credentials=True,
+     methods=["GET", "POST", "OPTIONS"])
 
 @app.route("/", methods=["GET"])
 def home():
@@ -167,7 +165,7 @@ def generate_gpt_explanation(prediction, key_words, confidence, user_text):
         max_tokens=100
     )
     return response.choices[0].message.content
-"""
+
 @app.route("/predict", methods=["POST"])
 def predict():
     data = request.get_json()
@@ -200,47 +198,6 @@ def predict():
         "explanation": explanation
     })
 
-"""
-@app.route("/predict", methods=["POST", "OPTIONS"])
-def predict():
-    if request.method == "OPTIONS":
-        # Preflight request handling
-        response = jsonify({'status': 'ok'})
-        response.headers.add("Access-Control-Allow-Origin", "chrome-extension://pkbfgfhddafhlnndmcnhahnokddbgjjo")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
-        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        return response, 200
-
-    # Regular POST request handling
-    data = request.get_json()
-    text = data.get("text", "").strip()
-
-    if not text:
-        return jsonify({"error": "No text provided"}), 400
-
-    if not is_query_relevant(text):
-        return jsonify({
-            "is_relevant": False,
-            "message": "The query is not related to diabetes misinformation."
-        })
-
-    prediction, probabilities = classify_with_bert(text)
-    key_words, total_attribution_score = extract_key_words(text)
-
-    explanation = (
-        generate_gpt_explanation(prediction, key_words, probabilities[1], text)
-        if should_explain(text, total_attribution_score)
-        else "The model's attribution scores were too low for a reliable explanation."
-    )
-
-    return jsonify({
-        "text": text,
-        "is_relevant": True,
-        "predicted_label": prediction,
-        "probabilities": {"false": probabilities[1], "real": probabilities[0]},
-        "key_words": key_words,
-        "explanation": explanation
-    })
 
 # Run Flask app
 if __name__ == "__main__":
