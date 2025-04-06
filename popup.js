@@ -1,14 +1,18 @@
 document.getElementById("classify").addEventListener("click", async () => {
     const text = document.getElementById("inputText").value.trim();
+    const classifyBtn = document.getElementById("classify");
+
+    // Change button color to red and text to "Classifying..."
+    classifyBtn.style.backgroundColor = "#f44336";  // Red when clicked
+    classifyBtn.textContent = "Classifying...";     // Show progress
 
     if (!text) {
         alert("Please enter some text.");
+        classifyBtn.textContent = "Classify Text";  // Reset the text after alert
         return;
     }
 
-    console.log("Entered Text:", text);
-
-    const serverUrl = "https://diabert-jxbe.onrender.com/predict";
+    const serverUrl = "http://127.0.0.1:5000/predict";
 
     try {
         const response = await fetch(serverUrl, {
@@ -17,137 +21,135 @@ document.getElementById("classify").addEventListener("click", async () => {
             body: JSON.stringify({ text }),
         });
 
-        // Handle non-JSON responses or failed requests
         if (!response.ok) {
             throw new Error(`Server responded with status ${response.status}`);
         }
 
         const result = await response.json();
-        console.log("Server response:", result);
 
-        // Handle unrelated query response
+        // Handle unrelated query
         if (result.is_relevant === false) {
-            document.getElementById("result").innerHTML = 
+            document.getElementById("result").innerHTML =
                 `<strong style="font-size: 18px;">Unrelated Query:</strong> ${result.message || "The input is unrelated to diabetes."}`;
             document.getElementById("confidenceChart").style.display = "none";
             document.getElementById("explanationSection").style.display = "none";
+            classifyBtn.textContent = "Classify Text";  // Reset after unrelated
             return;
         }
 
-        // Ensure probabilities exist before accessing them
-        if (!result.probabilities || typeof result.probabilities.false === "undefined" || typeof result.probabilities.real === "undefined") {
-            console.error("Invalid probabilities:", result.probabilities);
-            document.getElementById("result").innerHTML = 
-                `<strong style="color: red;">Error:</strong> Invalid response from the model.`;
-            document.getElementById("confidenceChart").style.display = "none";
-            return;
-        }
-
-        let predictionText = result.predicted_label.toLowerCase() === "false" 
-            ? '<span style="color: red; font-weight: bold; font-size: 22px;">FALSE</span>'
-            : '<span style="color: green; font-weight: bold; font-size: 22px;">TRUE</span>';
+        // Handling prediction result
+        const predLabel = result.predicted_label.toLowerCase();
+        let color = predLabel === "false" ? "red" : predLabel === "real" ? "green" : "#ff9800";  // orange for partially_true
+        let labelText = predLabel.replace("_", " ").toUpperCase();
 
         document.getElementById("result").innerHTML =
-            `<strong style="font-size: 20px;">PREDICTION:</strong> ${predictionText}`;
+            `<strong style="font-size: 20px;">PREDICTION:</strong> 
+             <span style="color: ${color}; font-weight: bold; font-size: 22px;">${labelText}</span>`;
 
-        // Render confidence chart
         renderChart(result.probabilities);
 
-        // Handle explainability
         if (result.explanation && result.explanation !== "The model's attribution scores were too low for a reliable explanation.") {
             displayExplainability(text, result.key_words, result.explanation);
         } else {
             document.getElementById("explanationSection").style.display = "block";
-            document.getElementById("highlightedText").innerHTML = 
-                "<strong>Explanation Not Available:</strong> The model did not rely on specific words strongly enough to generate an explanation.";
+            document.getElementById("highlightedText").innerHTML =
+                "<strong>Explanation Not Available:</strong> The model did not rely on specific words strongly enough.";
             document.getElementById("explanationText").innerHTML = "";
         }
+
+        // Reset the button text after prediction
+        classifyBtn.textContent = "Classify Text";
 
     } catch (error) {
         console.error("Error:", error);
         document.getElementById("result").innerHTML =
             `<strong style="color: red;">Server Error:</strong> ${error.message || "Please try again later."}`;
+        classifyBtn.textContent = "Classify Text";  // Reset on error too
     }
 });
 
-
-// Function to render confidence chart
 function renderChart(probabilities) {
     const ctx = document.getElementById("confidenceChart").getContext("2d");
 
-    // Destroy existing chart if it exists
     if (window.confidenceChart && typeof window.confidenceChart.destroy === "function") {
         window.confidenceChart.destroy();
     }
-    window.confidenceChart = null;
 
-    console.log("Rendering chart with probabilities:", probabilities);
-
-    if (!probabilities || typeof probabilities.real === "undefined" || typeof probabilities.false === "undefined") {
-        console.error("Invalid probabilities:", probabilities);
-        document.getElementById("confidenceChart").style.display = "none";
-        alert("Error: Unable to display chart.");
-        return;
-    }
-
-    let realConfidence = probabilities.real;
-    let falseConfidence = probabilities.false;
-
-    if (realConfidence <= 1 && falseConfidence <= 1) {
-        realConfidence *= 100;
-        falseConfidence *= 100;
-    }
+    let values = [
+        parseFloat(probabilities.real || 0),
+        parseFloat(probabilities.false || 0),
+        parseFloat(probabilities.partially_true || 0)
+    ];
 
     const minVisibleValue = 1;
-    realConfidence = Math.max(realConfidence, minVisibleValue);
-    falseConfidence = Math.max(falseConfidence, minVisibleValue);
+    values = values.map(val => Math.max(val, minVisibleValue));
 
-    // Create a new chart instance
     window.confidenceChart = new Chart(ctx, {
         type: "bar",
         data: {
-            labels: ["Real", "False"],
+            labels: ["Real", "False", "Partially True"],
             datasets: [{
                 label: "Confidence Score (%)",
-                data: [realConfidence, falseConfidence],
-                backgroundColor: ["#4caf50", "#f44336"], // Green for True, Red for False
+                data: values,
+                backgroundColor: ["#4caf50", "#f44336", "#ff9800"],  // Green, Red, Orange
                 borderWidth: 1,
             }],
         },
         options: {
             plugins: {
-                legend: {
-                    display: false
-                }
+                legend: { display: false }
             },
             scales: {
                 y: {
                     beginAtZero: true,
                     max: 100
-                },
-            },
-        },
+                }
+            }
+        }
     });
 
     document.getElementById("confidenceChart").style.display = "block";
 }
 
 
-// Function to highlight keywords and display explanation
+//Merge subtokens like "##meric" into "Turmeric"
+function mergeSubtokens(tokens) {
+    if (!Array.isArray(tokens)) return [];  // 🛡️ Safety check
+    const merged = [];
+    let current = "";
+
+    for (let token of tokens) {
+        if (token.startsWith("##")) {
+            current += token.replace("##", "");
+        } else {
+            if (current) merged.push(current);
+            current = token;
+        }
+    }
+    if (current) merged.push(current);
+    return merged;
+}
+
+
+
 function displayExplainability(text, keyWords, explanation) {
     const explanationSection = document.getElementById("explanationSection");
     const highlightedTextContainer = document.getElementById("highlightedText");
     const explanationText = document.getElementById("explanationText");
 
     if (!keyWords || keyWords.length === 0) {
-        highlightedTextContainer.innerHTML = 
+        highlightedTextContainer.innerHTML =
             `<strong>Highlighted Text:</strong> ${text} (No specific keywords detected)`;
     } else {
         let highlightedText = text;
-        keyWords.forEach(word => {
-            word = word.replace(/\./g, "");
-            const regex = new RegExp(`\\b${word}\\b`, "gi");
-            highlightedText = highlightedText.replace(regex, `<mark>${word}</mark>`);
+        const cleanKeywords = mergeSubtokens(keyWords);
+
+        cleanKeywords.forEach(word => {
+            const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`\\b${escapedWord}\\b`, "gi");
+            highlightedText = highlightedText.replace(regex, match => 
+                `<span style="background-color: yellow; font-weight: bold;">${match}</span>`
+            );
         });
 
         highlightedTextContainer.innerHTML = `<strong>Highlighted Text:</strong> ${highlightedText}`;
@@ -156,3 +158,32 @@ function displayExplainability(text, keyWords, explanation) {
     explanationText.innerHTML = `<strong>Explanation:</strong> ${explanation}`;
     explanationSection.style.display = "block";
 }
+
+// Delaying classify button to ensure backend loads resources
+window.onload = () => {
+    const classifyBtn = document.getElementById("classify");
+    classifyBtn.disabled = true;
+    classifyBtn.textContent = "Loading model...";
+
+    setTimeout(() => {
+        classifyBtn.disabled = false;
+        classifyBtn.textContent = "Classify Text";
+    }, 2000); // 2 second buffer for resource loading
+};
+
+document.getElementById("clear").addEventListener("click", () => {
+    document.getElementById("inputText").value = "";
+    document.getElementById("result").innerHTML = "";
+    document.getElementById("confidenceChart").style.display = "none";
+    document.getElementById("explanationSection").style.display = "none";
+
+    // Destroy chart
+    if (window.confidenceChart && typeof window.confidenceChart.destroy === "function") {
+        window.confidenceChart.destroy();
+    }
+
+    // Reset classify button color and text
+    const classifyBtn = document.getElementById("classify");
+    classifyBtn.style.backgroundColor = "";
+    classifyBtn.textContent = "Classify Text";
+});

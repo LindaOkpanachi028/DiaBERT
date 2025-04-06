@@ -1,31 +1,18 @@
-
-  {
+{
     "manifest_version": 3,
-    "name": "DiaBERT Misinformation Checker",
+    "name": "DiaBERT Classifier",
     "version": "1.0",
-    "description": "Classify diabetes-related text using BERT and visualize confidence scores.",
+    "description": "Classify diabetes-related text and get explanations.",
+    "action": {
+      "default_popup": "popup.html",
+      "default_title": "DiaBERT Misinformation Classifier"
+    },
     "permissions": [
-        "activeTab",
-        "storage",
-        "scripting"
+      "activeTab",
+      "scripting"
     ],
     "host_permissions": [
-        "https://diabert-jxbe.onrender.com/*"
-    ],
-    "action": {
-        "default_popup": "popup.html",
-        "default_icon": {
-            "16": "icons/icon16.png",
-            "48": "icons/icon48.png",
-            "128": "icons/icon128.png"
-        }
-    },
-    "background": {
-        "service_worker": "background.js"
-    },
-    "icons": {
-        "16": "icons/icon16.png",
-        "48": "icons/icon48.png",
-        "128": "icons/icon128.png"
-    }
-}
+      "http://127.0.0.1:5000/*"
+    ]
+  }
+  
