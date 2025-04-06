@@ -12,7 +12,7 @@ document.getElementById("classify").addEventListener("click", async () => {
         return;
     }
 
-    const serverUrl = "http://127.0.0.1:5000/predict";
+    const serverUrl = "https://diabert-1-3vgv.onrender.com/predict";
 
     try {
         const response = await fetch(serverUrl, {
