@@ -12,9 +12,9 @@ from transformers_interpret import SequenceClassificationExplainer
 from sentence_transformers import SentenceTransformer, util
 from transformers.modeling_outputs import SequenceClassifierOutput
 from flask_cors import CORS
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
-load_dotenv()
+#load_dotenv()
 
 app = Flask(__name__)
 
