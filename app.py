@@ -56,6 +56,8 @@ def load_resources():
 
     resources_loaded = True
 
+print("OpenAI Key Loaded:", bool(openai.api_key))
+
 @app.before_request
 def ensure_resources_loaded():
     if not resources_loaded:
@@ -184,43 +186,49 @@ def is_query_relevant(text, threshold=0.6):
 #Main predict endpoint
 @app.route("/predict", methods=["POST"])
 def predict():
-    data = request.get_json()
-    text = data.get("text", "").strip()
-    if not text:
-        return jsonify({"error": "No text provided."}), 400
+    try:
+        data = request.get_json()
+        text = data.get("text", "").strip()
+        if not text:
+            return jsonify({"error": "No text provided."}), 400
 
-    #Normalize: add punctuation if missing
-    if not text.endswith((".", "!", "?")):
-        text += "."
+        if not text.endswith((".", "!", "?")):
+            text += "."
+        text = text[0].upper() + text[1:]
 
-    #Normalize: capitalize first letter for better model consistency
-    text = text[0].upper() + text[1:]
+        if not is_query_relevant(text):
+            return jsonify({
+                "is_relevant": False,
+                "message": "Query not related to diabetes."
+            })
 
-    if not is_query_relevant(text):
+        label, raw_probs = classify_with_onnx(text)
+
+        probs = {
+            "real": float(raw_probs["real"]),
+            "false": float(raw_probs["false"]),
+            "partially_true": float(raw_probs["partially_true"])
+        }
+
+        explanation, keywords = get_explanation(text, label, probs[label])
+
         return jsonify({
-            "is_relevant": False,
-            "message": "Query not related to diabetes."
+            "text": text,
+            "is_relevant": True,
+            "predicted_label": label,
+            "probabilities": probs,
+            "key_words": keywords,
+            "explanation": explanation
         })
-
-    label, raw_probs = classify_with_onnx(text)
-
-    #float32 values are converted to native floats
-    probs = {
-        "real": float(raw_probs["real"]),
-        "false": float(raw_probs["false"]),
-        "partially_true": float(raw_probs["partially_true"])
-    }
-
-    explanation, keywords = get_explanation(text, label, probs[label])
-
-    return jsonify({
-        "text": text,
-        "is_relevant": True,
-        "predicted_label": label,
-        "probabilities": probs,
-        "key_words": keywords,
-        "explanation": explanation
-    })
+    except Exception as e:
+        import traceback
+        print("ERROR in /predict:", e)
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    
+@app.route("/ping")
+def ping():
+    return "DiaBERT server is up!", 200
 
 if __name__ == "__main__":
     app.run(debug=False)
